@@ -7,17 +7,19 @@ Author: Ali Jaun
 
 class vsetup {
      function __construct() {
-          register_activation_hook(__FILE__,array($this,'activate'));
-          add_action( 'init', array( $this, 'create_product_post_type' ) );
-          add_action( 'init', array( $this, 'create_taxonomies' ) );
-          add_action( 'add_meta_boxes', array( $this, 'add_product_custom_fields' ) );
-          add_action( 'save_post_product', array( $this, 'save_product_custom_fields' ) );
+          register_activation_hook( __FILE__ , array( $this , 'activate' ));
+          add_action( 'init', array( $this, 'create_product_post_type' ));
+          add_action( 'init', array( $this, 'create_taxonomies' ));
+          add_action( 'add_meta_boxes', array( $this, 'add_product_custom_fields' ));
+          add_action( 'save_post_product', array( $this, 'save_product_custom_fields' ));
+          add_shortcode( 'product_archive', array( $this, 'product_display' ) );
      } 
 
      function activate() {
           $this->create_product_post_type();
           $this->create_taxonomies();
-          $this->myplugin_activate();
+          $this->import_data();
+          
 	}
           
     function create_product_post_type() {
@@ -152,7 +154,7 @@ function save_product_custom_fields( $post_id ) {
 }
 
 
-function myplugin_activate() {
+function import_data() {
 	$request = wp_remote_get( 'https://dummyjson.com/products' );
 
 	if( is_wp_error( $request ) ) {
@@ -238,6 +240,50 @@ function myplugin_activate() {
 		 	}
 		}
 	}
+
+
+	function product_display( $atts, $content ) {
+	   // extract( shortcode_atts( array(     
+	   //    'foo'       => '',
+	   //    'icon'      => '',
+	   //    'counter'   => '0',
+	   //    'plus_sign' => 'yes',
+	   //    'delay_time'=> '',
+	   //  ), $atts ) );
+	  ob_start();
+	  ?>
+
+	  <table class="table table-striped">
+	  <thead>
+	    <tr>
+	      <th scope="col">#</th>
+	      <th scope="col">First</th>
+	      <th scope="col">Last</th>
+	      <th scope="col">Handle</th>
+	    </tr>
+	  </thead>
+	  <tbody>
+	  	<?php
+          $args = array( 'posts_per_page'         => -1,
+          				 'post_type'              => 'product' );
+            $loop = new WP_Query( $args );
+            while ( $loop->have_posts() ) : $loop->the_post(); ?>
+	    <tr>
+	      <th scope="row">1</th>
+	      <td><?php the_title(); ?></td>
+	      <td>Otto</td>
+	      <td>@mdo</td>
+	    </tr>
+		<?php endwhile; ?>
+	    
+	  </tbody>
+	</table>
+	  
+	 <?php 
+	  $cont = ob_get_contents();
+	  ob_end_clean();
+	  return $cont;
+	} 
 }
 
 

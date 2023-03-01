@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Plugin Dev Test
-Description: Create CPT with 2 CTs, get data from JSON
+Description: Create CPT with 2 CTs, get data from JSON. This plugin take few minutes to activate because of populating posts.
 Author: Ali Jaun
 */
 
@@ -10,26 +10,30 @@ class vsetup {
           register_activation_hook(__FILE__,array($this,'activate'));
           add_action( 'init', array( $this, 'create_product_post_type' ) );
           add_action( 'init', array( $this, 'create_taxonomies' ) );
+          add_action( 'add_meta_boxes', array( $this, 'add_product_custom_fields' ) );
+          add_action( 'save_post_product', array( $this, 'save_product_custom_fields' ) );
      } 
+
      function activate() {
           $this->create_product_post_type();
           $this->create_taxonomies();
-          $brand_id = wp_insert_term( 'test brand', 'pbrand' );
-}
-          function create_product_post_type() {
-			    $labels = array(
-			        'name' => 'Products',
-			        'singular_name' => 'Product',
-			    );
-			    $args = array(
-			        'labels' => $labels,
-			        'public' => true,
-			        'has_archive' => true,
-			        'menu_icon' => 'dashicons-cart',
-			        'supports' => array( 'title', 'editor', 'thumbnail' ),
-			    );
-			    register_post_type( 'product', $args );
-			}
+          $this->myplugin_activate();
+	}
+          
+    function create_product_post_type() {
+	    $labels = array(
+	        'name' => 'Products',
+	        'singular_name' => 'Product',
+	    );
+	    $args = array(
+	        'labels' => $labels,
+	        'public' => true,
+	        'has_archive' => true,
+	        'menu_icon' => 'dashicons-cart',
+	        'supports' => array( 'title', 'editor', 'thumbnail' ),
+	    );
+	    register_post_type( 'product', $args );
+	}
 
    function create_taxonomies() {
 
@@ -82,98 +86,21 @@ class vsetup {
         'show_tagcloud'     => true,
     );
     register_taxonomy( 'category', 'product', $args );
-}
-     }
+	}
 
 
-new vsetup();
+	function add_product_custom_fields() {
+	    add_meta_box(
+	        'product_custom_fields',
+	        'Product Custom Fields',
+	        array( $this, 'product_custom_fields_callback'),
+	        'product',
+	        'normal',
+	        'default'
+	    );
+	}
 
-
-/*
-function create_product_post_type() {
-    $labels = array(
-        'name' => 'Products',
-        'singular_name' => 'Product',
-    );
-    $args = array(
-        'labels' => $labels,
-        'public' => true,
-        'has_archive' => true,
-        'menu_icon' => 'dashicons-cart',
-        'supports' => array( 'title', 'editor', 'thumbnail' ),
-    );
-    register_post_type( 'product', $args );
-}
-// add_action( 'init', 'create_product_post_type' );
-
-function create_product_taxonomies() {
-
-    // Brand Taxonomy
-    $labels = array(
-        'name'              => 'Brands',
-        'singular_name'     => 'Brand',
-        'search_items'      => 'Search Brands',
-        'all_items'         => 'All Brands',
-        'parent_item'       => 'Parent Brand',
-        'parent_item_colon' => 'Parent Brand:',
-        'edit_item'         => 'Edit Brand',
-        'update_item'       => 'Update Brand',
-        'add_new_item'      => 'Add New Brand',
-        'new_item_name'     => 'New Brand Name',
-        'menu_name'         => 'Brands',
-    );
-    $args = array(
-        'labels'            => $labels,
-        'hierarchical'      => true,
-        'public'            => true,
-        'show_ui'           => true,
-        'show_admin_column' => true,
-        'show_in_nav_menus' => true,
-        'show_tagcloud'     => true,
-    );
-    register_taxonomy( 'pbrand', 'product', $args );
-
-    // Category Taxonomy
-    $labels = array(
-        'name'              => 'Categories',
-        'singular_name'     => 'Category',
-        'search_items'      => 'Search Categories',
-        'all_items'         => 'All Categories',
-        'parent_item'       => 'Parent Category',
-        'parent_item_colon' => 'Parent Category:',
-        'edit_item'         => 'Edit Category',
-        'update_item'       => 'Update Category',
-        'add_new_item'      => 'Add New Category',
-        'new_item_name'     => 'New Category Name',
-        'menu_name'         => 'Categories',
-    );
-    $args = array(
-        'labels'            => $labels,
-        'hierarchical'      => true,
-        'public'            => true,
-        'show_ui'           => true,
-        'show_admin_column' => true,
-        'show_in_nav_menus' => true,
-        'show_tagcloud'     => true,
-    );
-    register_taxonomy( 'category', 'product', $args );
-}
-
-
-
-function add_product_custom_fields() {
-    add_meta_box(
-        'product_custom_fields',
-        'Product Custom Fields',
-        'product_custom_fields_callback',
-        'product',
-        'normal',
-        'default'
-    );
-}
-
-add_action( 'add_meta_boxes', 'add_product_custom_fields' );
-
+	
 function product_custom_fields_callback( $post ) {
     $api_id = get_post_meta( $post->ID, '_api_id', true );
     $price = get_post_meta( $post->ID, '_price', true );
@@ -224,111 +151,95 @@ function save_product_custom_fields( $post_id ) {
     }
 }
 
-add_action( 'save_post_product', 'save_product_custom_fields' );
-
-
-
-
-
-
-
 
 function myplugin_activate() {
-   
-create_product_post_type();
-create_product_taxonomies();
+	$request = wp_remote_get( 'https://dummyjson.com/products' );
 
-$request = wp_remote_get( 'https://dummyjson.com/products?limit=1' );
+	if( is_wp_error( $request ) ) {
+		return false;
+	}
 
-if( is_wp_error( $request ) ) {
-	return false;
-}
+	$body = wp_remote_retrieve_body( $request );
 
-$body = wp_remote_retrieve_body( $request );
+	$data = json_decode( $body );
+	$products = $data->products;
 
-$data = json_decode( $body );
-$products = $data->products;
+	if( ! empty( $data ) ) {
 
-if( ! empty( $data ) ) {
+		foreach( $products as $product ) {
+			$brand_id = term_exists( $product->brand, 'brand', 0 );
+			if ( !$brand_id ) {
+			    $brand_id = wp_insert_term( $product->brand, 'brand' , 0 );
+			}
 
-	foreach( $products as $product ) {
-	
-	//$brand_id = term_exists( $product->brand, 'brand', 0 );
-	//if ( !$brand_id ) {
-	    
-	//}
-
-	// $brand_term = get_term_by('name', $product->brand, 'brand');
-
-	// $category_id = term_exists( $product->category, 'category', 0 );
-	// if ( !$category_id ) {
-	//     $category_id = wp_insert_term( $product->category, 'category', 0 );
-	// }
-	$brand_id = wp_insert_term( $product->category, 'brand' , 0 );
+			$category_id = term_exists( $product->category, 'category', 0 );
+			if ( !$category_id ) {
+			    $category_id = wp_insert_term( $product->category, 'category', 0 );
+			}
 
 
-	$my_post = array(
-		'post_type' => 'product',
-		'post_title'    => $product->title,
-		'post_content' =>  $product->description,
-		'post_status'  => 'publish',
-		'tax_input'    => array(
-		//	'brand'     => $brand_id->term_taxonomy_id,
-			'category' => $category_id['term_taxonomy_id'],
-		),
+			$my_post = array(
+				'post_type' => 'product',
+				'post_title'    => $product->title,
+				'post_content' =>  $product->description,
+				'post_status'  => 'publish',
+				'tax_input'    => array(
+					'brand'    => $brand_id['term_taxonomy_id'],
+					'category' => $category_id['term_taxonomy_id'],
+				),
 
-		'meta_input'   => array(
-			'_api_id' => $product->id,
-			'_price' => $product->price,
-			'_discount_percentage' => $product->discountPercentage,
-			'_rating' => $product->rating,
-			'_stock' => $product->stock,
-		),
-	);
+				'meta_input'   => array(
+					'_api_id' => $product->id,
+					'_price' => $product->price,
+					'_discount_percentage' => $product->discountPercentage,
+					'_rating' => $product->rating,
+					'_stock' => $product->stock,
+				),
+			);
 
 
-	$post_id = wp_insert_post( $my_post );
-	$name = basename($product->thumbnail); 
+			$post_id = wp_insert_post( $my_post );
+			$name = basename($product->thumbnail); 
 
-	
-$image_url        = $product->thumbnail; 
-$image_name       = $name;
-$upload_dir       = wp_upload_dir(); 
-$image_data       = file_get_contents($image_url); 
-$unique_file_name = wp_unique_filename( $upload_dir['path'], $image_name );
-$filename         = basename( $unique_file_name ); 
+		
+			$image_url        = $product->thumbnail; 
+			$image_name       = $name;
+			$upload_dir       = wp_upload_dir(); 
+			$image_data       = file_get_contents($image_url); 
+			$unique_file_name = wp_unique_filename( $upload_dir['path'], $image_name );
+			$filename         = basename( $unique_file_name ); 
 
-if( wp_mkdir_p( $upload_dir['path'] ) ) {
-    $file = $upload_dir['path'] . '/' . $filename;
-} else {
-    $file = $upload_dir['basedir'] . '/' . $filename;
-}
+			if( wp_mkdir_p( $upload_dir['path'] ) ) {
+			    $file = $upload_dir['path'] . '/' . $filename;
+			} else {
+			    $file = $upload_dir['basedir'] . '/' . $filename;
+			}
 
-file_put_contents( $file, $image_data );
+			file_put_contents( $file, $image_data );
 
-$wp_filetype = wp_check_filetype( $filename, null );
+			$wp_filetype = wp_check_filetype( $filename, null );
 
-$attachment = array(
-    'post_mime_type' => $wp_filetype['type'],
-    'post_title'     => sanitize_file_name( $filename ),
-    'post_content'   => '',
-    'post_status'    => 'inherit'
-);
+			$attachment = array(
+			    'post_mime_type' => $wp_filetype['type'],
+			    'post_title'     => sanitize_file_name( $filename ),
+			    'post_content'   => '',
+			    'post_status'    => 'inherit'
+			);
 
-		$attach_id = wp_insert_attachment( $attachment, $file, $post_id );
+			$attach_id = wp_insert_attachment( $attachment, $file, $post_id );
 
-		require_once(ABSPATH . 'wp-admin/includes/image.php');
+			require_once(ABSPATH . 'wp-admin/includes/image.php');
 
-		$attach_data = wp_generate_attachment_metadata( $attach_id, $file );
+			$attach_data = wp_generate_attachment_metadata( $attach_id, $file );
 
-		wp_update_attachment_metadata( $attach_id, $attach_data );
+			wp_update_attachment_metadata( $attach_id, $attach_data );
 
-		set_post_thumbnail( $post_id, $attach_id );
-	 	}
+			set_post_thumbnail( $post_id, $attach_id );
+		 	}
+		}
 	}
 }
 
 
-register_activation_hook( __FILE__, 'myplugin_activate' );
+new vsetup();
 
-*/

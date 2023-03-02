@@ -13,6 +13,7 @@ class vsetup {
           add_action( 'add_meta_boxes', array( $this, 'add_product_custom_fields' ));
           add_action( 'save_post_product', array( $this, 'save_product_custom_fields' ));
           add_shortcode( 'product_archive', array( $this, 'product_display' ) );
+          add_action( 'wp_enqueue_scripts', array( $this, 'product_archive_template_assets' ));
      } 
 
      function activate() {
@@ -20,22 +21,22 @@ class vsetup {
           $this->create_taxonomies();
           $this->import_data();
           
-	}
+    }
           
     function create_product_post_type() {
-	    $labels = array(
-	        'name' => 'Products',
-	        'singular_name' => 'Product',
-	    );
-	    $args = array(
-	        'labels' => $labels,
-	        'public' => true,
-	        'has_archive' => true,
-	        'menu_icon' => 'dashicons-cart',
-	        'supports' => array( 'title', 'editor', 'thumbnail' ),
-	    );
-	    register_post_type( 'product', $args );
-	}
+        $labels = array(
+            'name' => 'Products',
+            'singular_name' => 'Product',
+        );
+        $args = array(
+            'labels' => $labels,
+            'public' => true,
+            'has_archive' => true,
+            'menu_icon' => 'dashicons-cart',
+            'supports' => array( 'title', 'editor', 'thumbnail' ),
+        );
+        register_post_type( 'product', $args );
+    }
 
    function create_taxonomies() {
 
@@ -88,21 +89,21 @@ class vsetup {
         'show_tagcloud'     => true,
     );
     register_taxonomy( 'category', 'product', $args );
-	}
+    }
 
 
-	function add_product_custom_fields() {
-	    add_meta_box(
-	        'product_custom_fields',
-	        'Product Custom Fields',
-	        array( $this, 'product_custom_fields_callback'),
-	        'product',
-	        'normal',
-	        'default'
-	    );
-	}
+    function add_product_custom_fields() {
+        add_meta_box(
+            'product_custom_fields',
+            'Product Custom Fields',
+            array( $this, 'product_custom_fields_callback'),
+            'product',
+            'normal',
+            'default'
+        );
+    }
 
-	
+    
 function product_custom_fields_callback( $post ) {
     $api_id = get_post_meta( $post->ID, '_api_id', true );
     $price = get_post_meta( $post->ID, '_price', true );
@@ -155,137 +156,214 @@ function save_product_custom_fields( $post_id ) {
 
 
 function import_data() {
-	$request = wp_remote_get( 'https://dummyjson.com/products' );
 
-	if( is_wp_error( $request ) ) {
-		return false;
-	}
+    $request = wp_remote_get( 'https://dummyjson.com/products' );
 
-	$body = wp_remote_retrieve_body( $request );
+    if( is_wp_error( $request ) ) {
+        return false;
+    }
 
-	$data = json_decode( $body );
-	$products = $data->products;
+    $body = wp_remote_retrieve_body( $request );
 
-	if( ! empty( $data ) ) {
+    $data = json_decode( $body );
+    $products = $data->products;
 
-		foreach( $products as $product ) {
-			$brand_id = term_exists( $product->brand, 'brand', 0 );
-			if ( !$brand_id ) {
-			    $brand_id = wp_insert_term( $product->brand, 'brand' , 0 );
-			}
+    if( ! empty( $data ) ) {
 
-			$category_id = term_exists( $product->category, 'category', 0 );
-			if ( !$category_id ) {
-			    $category_id = wp_insert_term( $product->category, 'category', 0 );
-			}
+        foreach( $products as $product ) {
+            $brand_id = term_exists( $product->brand, 'brand', 0 );
+            if ( !$brand_id ) {
+                $brand_id = wp_insert_term( $product->brand, 'brand' , 0 );
+            }
 
-
-			$my_post = array(
-				'post_type' => 'product',
-				'post_title'    => $product->title,
-				'post_content' =>  $product->description,
-				'post_status'  => 'publish',
-				'tax_input'    => array(
-					'brand'    => $brand_id['term_taxonomy_id'],
-					'category' => $category_id['term_taxonomy_id'],
-				),
-
-				'meta_input'   => array(
-					'_api_id' => $product->id,
-					'_price' => $product->price,
-					'_discount_percentage' => $product->discountPercentage,
-					'_rating' => $product->rating,
-					'_stock' => $product->stock,
-				),
-			);
+            $category_id = term_exists( $product->category, 'category', 0 );
+            if ( !$category_id ) {
+                $category_id = wp_insert_term( $product->category, 'category', 0 );
+            }
 
 
-			$post_id = wp_insert_post( $my_post );
-			$name = basename($product->thumbnail); 
+            $my_post = array(
+                'post_type' => 'product',
+                'post_title'    => $product->title,
+                'post_content' =>  $product->description,
+                'post_status'  => 'publish',
+                'tax_input'    => array(
+                    'brand'    => $brand_id['term_taxonomy_id'],
+                    'category' => $category_id['term_taxonomy_id'],
+                ),
 
-		
-			$image_url        = $product->thumbnail; 
-			$image_name       = $name;
-			$upload_dir       = wp_upload_dir(); 
-			$image_data       = file_get_contents($image_url); 
-			$unique_file_name = wp_unique_filename( $upload_dir['path'], $image_name );
-			$filename         = basename( $unique_file_name ); 
-
-			if( wp_mkdir_p( $upload_dir['path'] ) ) {
-			    $file = $upload_dir['path'] . '/' . $filename;
-			} else {
-			    $file = $upload_dir['basedir'] . '/' . $filename;
-			}
-
-			file_put_contents( $file, $image_data );
-
-			$wp_filetype = wp_check_filetype( $filename, null );
-
-			$attachment = array(
-			    'post_mime_type' => $wp_filetype['type'],
-			    'post_title'     => sanitize_file_name( $filename ),
-			    'post_content'   => '',
-			    'post_status'    => 'inherit'
-			);
-
-			$attach_id = wp_insert_attachment( $attachment, $file, $post_id );
-
-			require_once(ABSPATH . 'wp-admin/includes/image.php');
-
-			$attach_data = wp_generate_attachment_metadata( $attach_id, $file );
-
-			wp_update_attachment_metadata( $attach_id, $attach_data );
-
-			set_post_thumbnail( $post_id, $attach_id );
-		 	}
-		}
-	}
+                'meta_input'   => array(
+                    '_api_id' => $product->id,
+                    '_price' => $product->price,
+                    '_discount_percentage' => $product->discountPercentage,
+                    '_rating' => $product->rating,
+                    '_stock' => $product->stock,
+                ),
+            );
 
 
-	function product_display( $atts, $content ) {
-	   // extract( shortcode_atts( array(     
-	   //    'foo'       => '',
-	   //    'icon'      => '',
-	   //    'counter'   => '0',
-	   //    'plus_sign' => 'yes',
-	   //    'delay_time'=> '',
-	   //  ), $atts ) );
-	  ob_start();
-	  ?>
+            $post_id = wp_insert_post( $my_post );
+            $name = basename($product->thumbnail); 
 
-	  <table class="table table-striped">
-	  <thead>
-	    <tr>
-	      <th scope="col">#</th>
-	      <th scope="col">First</th>
-	      <th scope="col">Last</th>
-	      <th scope="col">Handle</th>
-	    </tr>
-	  </thead>
-	  <tbody>
-	  	<?php
-          $args = array( 'posts_per_page'         => -1,
-          				 'post_type'              => 'product' );
+        
+            $image_url        = $product->thumbnail; 
+            $image_name       = $name;
+            $upload_dir       = wp_upload_dir(); 
+            $image_data       = file_get_contents($image_url); 
+            $unique_file_name = wp_unique_filename( $upload_dir['path'], $image_name );
+            $filename         = basename( $unique_file_name ); 
+
+            if( wp_mkdir_p( $upload_dir['path'] ) ) {
+                $file = $upload_dir['path'] . '/' . $filename;
+            } else {
+                $file = $upload_dir['basedir'] . '/' . $filename;
+            }
+
+            file_put_contents( $file, $image_data );
+
+            $wp_filetype = wp_check_filetype( $filename, null );
+
+            $attachment = array(
+                'post_mime_type' => $wp_filetype['type'],
+                'post_title'     => sanitize_file_name( $filename ),
+                'post_content'   => '',
+                'post_status'    => 'inherit'
+            );
+
+            $attach_id = wp_insert_attachment( $attachment, $file, $post_id );
+
+            require_once(ABSPATH . 'wp-admin/includes/image.php');
+
+            $attach_data = wp_generate_attachment_metadata( $attach_id, $file );
+
+            wp_update_attachment_metadata( $attach_id, $attach_data );
+
+            set_post_thumbnail( $post_id, $attach_id );
+            }
+        }
+    }
+
+
+    function product_display( $atts, $content ) {
+        
+       // extract( shortcode_atts( array(     
+       //    'foo'       => '',
+       //    'icon'      => '',
+       //    'counter'   => '0',
+       //    'plus_sign' => 'yes',
+       //    'delay_time'=> '',
+       //  ), $atts ) );
+      ob_start();
+      ?>
+
+        <?php
+            
+            $category = get_terms( 'category', array(
+                'hide_empty' => false,
+            ) );
+
+            $brand = get_terms( 'brand', array(
+                'hide_empty' => false,
+            ) );
+
+            $brand_slug = ( ! empty( $_GET['brand'] )) ?  $_GET['brand'] :  '';
+            $cat_name = ( ! empty( $_GET['category'] )) ? $_GET['category'] : '';
+
+            if ( !empty($brand_slug) || !empty($cat_name) ) {
+            $tax = array(
+                    'relation' => 'OR',
+                        array(
+                            'taxonomy' => 'category',
+                            'field'    => 'name',
+                            'terms'    => $cat_name
+                        ),
+                        array(
+                            'taxonomy' => 'brand',
+                            'field'    => 'slug',
+                            'terms'    => $brand_slug
+                        ),
+                    );
+            }
+
+            if ( !empty($tax) ) {
+                $args = array( 
+                    'posts_per_page'         => -1,
+                    'post_type'              => 'product',
+                    'tax_query'              => $tax,
+                 );
+            }
+            else {
+                $args = array( 
+                    'posts_per_page'         => -1,
+                    'post_type'              => 'product',
+                 );
+            }
+
             $loop = new WP_Query( $args );
-            while ( $loop->have_posts() ) : $loop->the_post(); ?>
-	    <tr>
-	      <th scope="row">1</th>
-	      <td><?php the_title(); ?></td>
-	      <td>Otto</td>
-	      <td>@mdo</td>
-	    </tr>
-		<?php endwhile; ?>
-	    
-	  </tbody>
-	</table>
-	  
-	 <?php 
-	  $cont = ob_get_contents();
-	  ob_end_clean();
-	  return $cont;
-	} 
+            echo '<div class="row">';
+            echo '<div class="col-md-6">';
+            echo '<div class="sorting-option">';
+            echo '<select onchange="if (this.value) window.location.href=this.value">';
+            echo  '<option value="">Brand</option>';
+            foreach ( $brand as $b ) {
+               echo  '<option value="?brand='.$b->slug.'">'.$b->name.'</option>';
+            }
+            echo '</select>';
+            echo '</div>';
+            echo '</div>';            
+            echo '<div class="col-md-6">';
+            echo '<div class="sorting-option">';
+            echo '<select onchange="if (this.value) window.location.href=this.value">';
+            echo  '<option value="">Category</option>';
+            foreach ( $category as $cat ) {
+               echo  '<option value="?category='.$cat->slug.'">'.$cat->name.'</option>';
+            }
+            echo '</select>';
+            echo '</div>';
+            echo '</div>';
+
+            while ( $loop->have_posts() ) : $loop->the_post(); 
+            $image = get_the_post_thumbnail_url();
+            $title = get_the_title();
+            $price = get_post_meta(  get_the_ID() , '_price', true );;
+            $category = get_the_terms( get_the_ID() , 'category');
+            $brand = get_the_terms( get_the_ID() , 'brand');
+
+
+            echo '<div class="col-md-4">';
+            echo '<div class="card">';
+            echo '<div class="card-body">';
+            echo '<div class="image"><img src="' . $image . '" class="img-fluid"></div>';
+            echo '<div class="title">' . $title . '</div>';
+            echo '<div class="price">$' . $price . '</div>';
+            foreach ( $category as $cat ) {
+                echo '<div class="category">' . $cat->name . '</div>';
+            }
+
+            foreach ( $brand as $b ) {
+                echo '<div class="category">' . $b->name . '</div>';
+            }
+            echo '</div>';
+            echo '</div>';
+            echo '</div>';
+
+            endwhile; echo '</div>';?>
+        
+    
+      
+     <?php 
+      $cont = ob_get_contents();
+      ob_end_clean();
+      return $cont;
+    }
+
+
+	function product_archive_template_assets() {
+	    wp_enqueue_style( 'bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css' );
+	    wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
+	}
+
 }
 
 
 new vsetup();
-

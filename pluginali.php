@@ -184,20 +184,20 @@ function import_data() {
 
             $my_post = array(
                 'post_type' => 'product',
-                'post_title'    => $product->title,
-                'post_content' =>  $product->description,
+                'post_title'    => esc_html($product->title),
+                'post_content' =>  esc_html($product->description),
                 'post_status'  => 'publish',
                 'tax_input'    => array(
-                    'brand'    => $brand_id['term_taxonomy_id'],
-                    'category' => $category_id['term_taxonomy_id'],
+                    'brand'    => esc_html($brand_id['term_taxonomy_id']),
+                    'category' => esc_html($category_id['term_taxonomy_id']),
                 ),
 
                 'meta_input'   => array(
-                    '_api_id' => $product->id,
-                    '_price' => $product->price,
-                    '_discount_percentage' => $product->discountPercentage,
-                    '_rating' => $product->rating,
-                    '_stock' => $product->stock,
+                    '_api_id' => esc_html($product->id),
+                    '_price' => esc_html($product->price),
+                    '_discount_percentage' => esc_html($product->discountPercentage),
+                    '_rating' => esc_html($product->rating),
+                    '_stock' => esc_html($product->stock),
                 ),
             );
 
@@ -206,7 +206,7 @@ function import_data() {
             $name = basename($product->thumbnail); 
 
         
-            $image_url        = $product->thumbnail; 
+            $image_url        = esc_url($product->thumbnail); 
             $image_name       = $name;
             $upload_dir       = wp_upload_dir(); 
             $image_data       = file_get_contents($image_url); 
@@ -245,14 +245,6 @@ function import_data() {
 
 
     function product_display( $atts, $content ) {
-        
-       // extract( shortcode_atts( array(     
-       //    'foo'       => '',
-       //    'icon'      => '',
-       //    'counter'   => '0',
-       //    'plus_sign' => 'yes',
-       //    'delay_time'=> '',
-       //  ), $atts ) );
       ob_start();
       ?>
 
@@ -358,12 +350,12 @@ function import_data() {
     }
 
 
-	function product_archive_template_assets() {
-	    wp_enqueue_style( 'bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css' );
-	    wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
-	}
-
+function product_archive_template_assets() {
+    wp_enqueue_style( 'bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css' );
+    wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
 }
 
+
+}
 
 new vsetup();

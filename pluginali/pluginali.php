@@ -246,9 +246,6 @@ function import_data() {
 
     function product_display( $atts, $content ) {
       ob_start();
-      ?>
-
-        <?php
             
             $category = get_terms( 'category', array(
                 'hide_empty' => false,
@@ -339,21 +336,18 @@ function import_data() {
             echo '</div>';
             echo '</div>';
 
-            endwhile; echo '</div>';?>
-        
-    
-      
-     <?php 
+            endwhile; echo '</div>';
+         
       $cont = ob_get_contents();
       ob_end_clean();
       return $cont;
     }
 
 
-function product_archive_template_assets() {
-    wp_enqueue_style( 'bootstrap', plugin_dir_url( __FILE__ ) . 'assets/bootstrap.min.css' );
-    wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
-}
+     function product_archive_template_assets() {
+         wp_enqueue_style( 'bootstrap', plugin_dir_url( __FILE__ ) . 'assets/bootstrap.min.css' );
+         wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
+     }
 
 }
 

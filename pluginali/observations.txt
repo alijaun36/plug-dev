@@ -1,4 +1,5 @@
 My Notes:
+I have not worked on design as it was not suggested to do so.
 After activating plugin, you have to use shortcode [product_archive] on any page to show the listings.
 
 Estimation:

@@ -326,11 +326,11 @@ function import_data() {
             echo '<div class="title">' . $title . '</div>';
             echo '<div class="price">$' . $price . '</div>';
             foreach ( $category as $cat ) {
-                echo '<div class="category">' . $cat->name . '</div>';
+                echo '<div class="category">Category: ' . $cat->name . '</div>';
             }
 
             foreach ( $brand as $b ) {
-                echo '<div class="category">' . $b->name . '</div>';
+                echo '<div class="category">Brand: ' . $b->name . '</div>';
             }
             echo '</div>';
             echo '</div>';

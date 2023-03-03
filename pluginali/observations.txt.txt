@@ -1,0 +1,7 @@
+My Notes:
+After activating plugin, you have to use shortcode [product_archive] on any page to show the listings.
+
+Estimation:
+My estimation for this plugin was 8-10 hours and if I calculate the quality time of development. It almost took 8:30 to 9 hour to complete this plugin.
+
+

@@ -351,16 +351,10 @@ function import_data() {
 
 
 function product_archive_template_assets() {
-    wp_enqueue_style( 'bootstrap', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css' );
+    wp_enqueue_style( 'bootstrap', plugin_dir_url( __FILE__ ) . 'assets/bootstrap.min.css' );
     wp_enqueue_style( 'product-archive', plugin_dir_url( __FILE__ ) . 'assets/product-archive.css' );
 }
 
-
-
-
-
-
 }
-
 
 new vsetup();
